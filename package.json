@@ -1,7 +1,0 @@
-{
-  "name": "caccia-alle-parole",
-  "version": "1.0.0",
-  "dependencies": {
-    "@google/generative-ai": "^0.14.1"
-  }
-}
