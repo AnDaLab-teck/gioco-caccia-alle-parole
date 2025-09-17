@@ -12,7 +12,7 @@ exports.handler = async function (event, context) {
         };
 
         // LA RIGA CORRETTA È QUESTA:
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        const model = genAI.getGenerativModel({ model: "gemini-2.0-flash" });
 
         const prompt = `
             Sei un esperto di vocabolario italiano per adolescenti.
