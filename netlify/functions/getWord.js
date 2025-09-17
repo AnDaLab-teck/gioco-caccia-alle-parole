@@ -1,9 +1,11 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-exports.handler = async function (event, context) {
+module.exports = async (req, res) => {
     try {
+        // Il body della richiesta su Vercel si trova in req.body
+        const { difficulty, usedWords } = req.body;
+        
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const { difficulty, usedWords } = JSON.parse(event.body);
 
         const difficultyMap = {
             1: "Base (facile, per ragazzi di 12 anni)",
@@ -11,21 +13,18 @@ exports.handler = async function (event, context) {
             3: "Avanzato (più difficile ma non tecnico, per ragazzi di 16 anni)"
         };
 
-        // LA RIGA CORRETTA CON IL MODELLO CHE HAI TROVATO TU:
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
         const prompt = `
             Sei un esperto di vocabolario italiano per adolescenti.
             Il tuo compito è creare una domanda per un gioco a quiz chiamato "Caccia alle Parole".
             Devi generare UNA SOLA parola con la sua definizione e 3 distrattori.
             La parola non deve essere una di queste: ${usedWords.join(', ')}.
-            
             Requisiti:
             - Livello di difficoltà: ${difficultyMap[difficulty]}.
             - Categoria: Scegli una tu tra le seguenti: Emozioni, Natura, Sport, Scienza, Cibo, Arte, Geografia.
             - La definizione deve essere chiara, concisa e adatta a un ragazzo di 12-16 anni.
             - I 3 distrattori devono essere plausibili ma chiaramente sbagliati.
-            
             Fornisci la risposta ESCLUSIVAMENTE in formato JSON, così:
             {
               "word": "La tua parola generata",
@@ -41,16 +40,11 @@ exports.handler = async function (event, context) {
         const text = response.text();
         const jsonResponse = JSON.parse(text.replace(/```json/g, '').replace(/```g, '').trim());
 
-        return {
-            statusCode: 200,
-            body: JSON.stringify(jsonResponse),
-        };
+        // Vercel usa res.status().json() per inviare la risposta
+        res.status(200).json(jsonResponse);
 
     } catch (error) {
         console.error("ERRORE DETTAGLIATO DALLA FUNZIONE:", error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: "Errore durante la generazione della parola.", details: error.message }),
-        };
+        res.status(500).json({ error: "Errore durante la generazione della parola.", details: error.message });
     }
 };
