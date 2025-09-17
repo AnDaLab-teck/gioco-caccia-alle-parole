@@ -11,8 +11,8 @@ exports.handler = async function (event, context) {
             3: "Avanzato (più difficile ma non tecnico, per ragazzi di 16 anni)"
         };
 
-        // LA RIGA CORRETTA È QUESTA:
-        const model = genAI.getGenerativModel({ model: "gemini-2.0-flash" });
+        // LA RIGA CORRETTA CON IL MODELLO CHE HAI TROVATO TU:
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const prompt = `
             Sei un esperto di vocabolario italiano per adolescenti.
@@ -39,7 +39,7 @@ exports.handler = async function (event, context) {
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
-        const jsonResponse = JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+        const jsonResponse = JSON.parse(text.replace(/```json/g, '').replace(/```g, '').trim());
 
         return {
             statusCode: 200,
@@ -47,7 +47,7 @@ exports.handler = async function (event, context) {
         };
 
     } catch (error) {
-        console.error("ERRORE DETTAGLIATO DALLA FUNZIONE:", error); // Log più dettagliato
+        console.error("ERRORE DETTAGLIATO DALLA FUNZIONE:", error);
         return {
             statusCode: 500,
             body: JSON.stringify({ error: "Errore durante la generazione della parola.", details: error.message }),
