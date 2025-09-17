@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/getWord.js": {
+      "memory": 1024
+    }
+  }
+}
