@@ -11,7 +11,8 @@ exports.handler = async function (event, context) {
             3: "Avanzato (più difficile ma non tecnico, per ragazzi di 16 anni)"
         };
 
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        // LA RIGA CORRETTA È QUESTA:
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
         const prompt = `
             Sei un esperto di vocabolario italiano per adolescenti.
@@ -46,10 +47,10 @@ exports.handler = async function (event, context) {
         };
 
     } catch (error) {
-        console.error(error);
+        console.error("ERRORE DETTAGLIATO DALLA FUNZIONE:", error); // Log più dettagliato
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: "Errore durante la generazione della parola." }),
+            body: JSON.stringify({ error: "Errore durante la generazione della parola.", details: error.message }),
         };
     }
 };
