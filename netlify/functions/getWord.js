@@ -1,11 +1,15 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+// Importiamo la libreria ufficiale di OpenAI
+const OpenAI = require('openai');
 
+// Inizializziamo il client con la chiave che Vercel ci darà
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
+
+// La nostra funzione per Vercel
 module.exports = async (req, res) => {
     try {
-        // Il body della richiesta su Vercel si trova in req.body
         const { difficulty, usedWords } = req.body;
-        
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
         const difficultyMap = {
             1: "Base (facile, per ragazzi di 12 anni)",
@@ -13,38 +17,34 @@ module.exports = async (req, res) => {
             3: "Avanzato (più difficile ma non tecnico, per ragazzi di 16 anni)"
         };
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        const systemPrompt = `Sei un esperto di vocabolario italiano per adolescenti. Il tuo unico compito è creare una domanda per un gioco a quiz. Devi generare UNA SOLA parola, la sua definizione e 3 distrattori. Fornisci la risposta ESCLUSIVAMENTE in formato JSON valido, senza testo introduttivo, commenti o markdown. Il formato deve essere esattamente:
+{
+  "word": "La tua parola generata",
+  "category": "La categoria scelta",
+  "level": 1,
+  "correct": "La definizione corretta",
+  "distractors": ["Distrattore 1", "Distrattore 2", "Distrattore 3"]
+}`;
 
-        const prompt = `
-            Sei un esperto di vocabolario italiano per adolescenti.
-            Il tuo compito è creare una domanda per un gioco a quiz chiamato "Caccia alle Parole".
-            Devi generare UNA SOLA parola con la sua definizione e 3 distrattori.
-            La parola non deve essere una di queste: ${usedWords.join(', ')}.
-            Requisiti:
-            - Livello di difficoltà: ${difficultyMap[difficulty]}.
-            - Categoria: Scegli una tu tra le seguenti: Emozioni, Natura, Sport, Scienza, Cibo, Arte, Geografia.
-            - La definizione deve essere chiara, concisa e adatta a un ragazzo di 12-16 anni.
-            - I 3 distrattori devono essere plausibili ma chiaramente sbagliati.
-            Fornisci la risposta ESCLUSIVAMENTE in formato JSON, così:
-            {
-              "word": "La tua parola generata",
-              "category": "La categoria scelta o data",
-              "level": ${difficulty},
-              "correct": "La definizione corretta",
-              "distractors": ["Distrattore 1", "Distrattore 2", "Distrattore 3"]
-            }
-        `;
+        const userPrompt = `Genera una nuova domanda. Parole già usate (da non ripetere): ${usedWords.join(', ')}. Livello di difficoltà richiesto: ${difficultyMap[difficulty]}. Categoria a tua scelta tra: Emozioni, Natura, Sport, Scienza, Cibo, Arte, Geografia.`;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-        const jsonResponse = JSON.parse(text.replace(/```json/g, '').replace(/```g, '').trim());
+        // Chiamiamo l'API di OpenAI
+        const chatCompletion = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo", // Usiamo un modello veloce ed economico
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt }
+            ],
+            response_format: { type: "json_object" }, // Chiediamo a OpenAI di rispondere direttamente in JSON
+        });
 
-        // Vercel usa res.status().json() per inviare la risposta
+        const jsonResponse = JSON.parse(chatCompletion.choices[0].message.content);
+
+        // Restituiamo la risposta al gioco
         res.status(200).json(jsonResponse);
 
     } catch (error) {
-        console.error("ERRORE DETTAGLIATO DALLA FUNZIONE:", error);
-        res.status(500).json({ error: "Errore durante la generazione della parola.", details: error.message });
+        console.error("ERRORE DETTAGLIATO DALLA FUNZIONE (OpenAI):", error);
+        res.status(500).json({ error: "Errore durante la generazione della parola con OpenAI.", details: error.message });
     }
 };
