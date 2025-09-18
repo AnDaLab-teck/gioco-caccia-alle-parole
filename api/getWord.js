@@ -1,79 +1,74 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Estrae l'array JSON dalla risposta testuale dell'IA
-const extractJsonArrayFromString = (text) => {
-    const jsonStart = text.indexOf('[');
-    const jsonEnd = text.lastIndexOf(']');
-    if (jsonStart === -1 || jsonEnd === -1 || jsonEnd < jsonStart) {
-        throw new Error("Nessun array JSON valido trovato nella risposta dell'IA.");
-    }
-    return text.substring(jsonStart, jsonEnd + 1);
-};
-
-// VALIDA E TRADUCE i dati in un formato standard
-const validateAndNormalizeData = (data) => {
-    const normalizedData = data.map(wordObj => {
-        const word = wordObj.parola || wordObj.word;
-        const category = wordObj.categoria || wordObj.category;
-        const correct = wordObj.corretta || wordObj.definizione;
-        const distractors = wordObj.distrattori || wordObj.distractors;
-
-        // Se un campo essenziale manca, ritorna null
-        if (!word || !category || !correct || !distractors || !Array.isArray(distractors) || distractors.length < 3) {
-            return null;
-        }
-        // Ritorna l'oggetto con le chiavi standard in inglese
-        return { word, category, correct, distractors };
-    }).filter(Boolean); // Rimuove eventuali oggetti null (non validi)
-
-    return normalizedData;
-};
-
 module.exports = async (req, res) => {
+    // Intestazioni anti-cache
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
 
-    const maxRetries = 3;
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const generationConfig = { temperature: 1.0 };
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest", generationConfig });
+    try {
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-            const prompt = `
-                ATTENZIONE: La tua unica funzione è generare un array JSON di 10 oggetti.
-                La tua risposta DEVE iniziare con '[' e finire con ']'.
-                NON includere MAI testo o markdown prima o dopo l'array.
-                Ogni oggetto deve contenere le chiavi: "parola", "categoria", "corretta" (la definizione), e "distrattori" (un array di 3 stringhe).
-                Le 10 parole generate devono essere uniche tra loro.
-            `;
+        // 1. Definiamo lo "stampo" (la funzione e il suo schema)
+        const tools = [{
+            functionDeclarations: [{
+                name: "crea_quiz_parole",
+                description: "Crea un set di 10 domande uniche per un gioco a quiz sul vocabolario italiano.",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        domande: {
+                            type: "ARRAY",
+                            description: "Un array contenente esattamente 10 oggetti domanda.",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    word: { type: "STRING", description: "La parola italiana per la domanda." },
+                                    category: { type: "STRING", description: "La categoria della parola (es. Natura, Emozioni)." },
+                                    correct: { type: "STRING", description: "La definizione corretta della parola." },
+                                    distractors: {
+                                        type: "ARRAY",
+                                        description: "Un array di esattamente 3 definizioni sbagliate (distrattori).",
+                                        items: { type: "STRING" }
+                                    }
+                                },
+                                required: ["word", "category", "correct", "distractors"]
+                            }
+                        }
+                    },
+                    required: ["domande"]
+                }
+            }]
+        }];
 
-            const result = await model.generateContent(prompt);
-            const rawText = result.response.text();
-            
-            const cleanedText = extractJsonArrayFromString(rawText);
-            const gameData = JSON.parse(cleanedText);
+        const model = genAI.getGenerativeModel({
+            model: "gemini-1.5-flash-latest",
+            tools: tools,
+        });
 
-            // Applichiamo la nostra nuova funzione di validazione e traduzione
-            const validAndNormalizedGame = validateAndNormalizeData(gameData);
+        const prompt = "Genera una partita completa per il gioco 'Caccia alle Parole', creando 10 domande diverse e uniche. Usa la funzione 'crea_quiz_parole' per formattare la tua risposta.";
+        
+        const result = await model.generateContent(prompt);
+        const call = result.response.functionCalls?.[0];
 
-            if (validAndNormalizedGame.length < 10) {
-                throw new Error(`L'IA ha fornito solo ${validAndNormalizedGame.length} domande valide.`);
-            }
-            
-            const wordSet = new Set(validAndNormalizedGame.map(q => q.word));
-            if (wordSet.size < 10) {
-                throw new Error("L'IA ha generato parole duplicate.");
-            }
-
-            return res.status(200).json(validAndNormalizedGame);
-
-        } catch (error) {
-            console.error(`Tentativo ${attempt} fallito: ${error.message}`);
-            if (attempt === maxRetries) {
-                return res.status(500).json({ error: "L'IA non ha fornito una partita valida dopo vari tentativi.", details: error.message });
-            }
+        // 2. Controlliamo se l'IA ha usato correttamente il nostro stampo
+        if (!call || call.name !== "crea_quiz_parole" || !call.args || !Array.isArray(call.args.domande) || call.args.domande.length < 10) {
+            throw new Error("L'IA non è riuscita a generare una partita valida utilizzando lo strumento fornito.");
         }
+
+        const gameData = call.args.domande;
+        
+        // 3. Controllo duplicati finale per sicurezza
+        const wordSet = new Set(gameData.map(q => q.word));
+        if (wordSet.size < 10) {
+            throw new Error("L'IA ha generato parole duplicate all'interno della partita.");
+        }
+
+        // 4. Inviamo i dati, ora garantiti per essere perfetti
+        return res.status(200).json(gameData);
+
+    } catch (error) {
+        console.error("Errore critico nella generazione della partita:", error);
+        return res.status(500).json({ error: "Si è verificato un errore interno nel generare la partita.", details: error.message });
     }
 };
