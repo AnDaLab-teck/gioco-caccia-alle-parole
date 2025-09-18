@@ -1,9 +1,12 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const OpenAI = require('openai');
 
-exports.handler = async function (event, context) {
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
+
+module.exports = async (req, res) => {
     try {
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const { difficulty, usedWords } = JSON.parse(event.body);
+        const { difficulty, usedWords } = req.body;
 
         const difficultyMap = {
             1: "Base (facile, per ragazzi di 12 anni)",
@@ -11,45 +14,32 @@ exports.handler = async function (event, context) {
             3: "Avanzato (più difficile ma non tecnico, per ragazzi di 16 anni)"
         };
 
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        const systemPrompt = `Sei un esperto di vocabolario italiano per adolescenti. Il tuo unico compito è creare una domanda per un gioco a quiz. Devi generare UNA SOLA parola, la sua definizione e 3 distrattori. Fornisci la risposta ESCLUSIVAMENTE in formato JSON valido, senza testo introduttivo, commenti o markdown. Il formato deve essere esattamente:
+{
+  "word": "La tua parola generata",
+  "category": "La categoria scelta",
+  "level": 1,
+  "correct": "La definizione corretta",
+  "distractors": ["Distrattore 1", "Distrattore 2", "Distrattore 3"]
+}`;
 
-        const prompt = `
-            Sei un esperto di vocabolario italiano per adolescenti.
-            Il tuo compito è creare una domanda per un gioco a quiz chiamato "Caccia alle Parole".
-            Devi generare UNA SOLA parola con la sua definizione e 3 distrattori.
-            La parola non deve essere una di queste: ${usedWords.join(', ')}.
-            
-            Requisiti:
-            - Livello di difficoltà: ${difficultyMap[difficulty]}.
-            - Categoria: Scegli una tu tra le seguenti: Emozioni, Natura, Sport, Scienza, Cibo, Arte, Geografia.
-            - La definizione deve essere chiara, concisa e adatta a un ragazzo di 12-16 anni.
-            - I 3 distrattori devono essere plausibili ma chiaramente sbagliati.
-            
-            Fornisci la risposta ESCLUSIVAMENTE in formato JSON, così:
-            {
-              "word": "La tua parola generata",
-              "category": "La categoria scelta o data",
-              "level": ${difficulty},
-              "correct": "La definizione corretta",
-              "distractors": ["Distrattore 1", "Distrattore 2", "Distrattore 3"]
-            }
-        `;
+        const userPrompt = `Genera una nuova domanda. Parole già usate (da non ripetere): ${usedWords.join(', ')}. Livello di difficoltà richiesto: ${difficultyMap[difficulty]}. Categoria a tua scelta tra: Emozioni, Natura, Sport, Scienza, Cibo, Arte, Geografia.`;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-        const jsonResponse = JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+        const chatCompletion = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt }
+            ],
+            response_format: { type: "json_object" },
+        });
 
-        return {
-            statusCode: 200,
-            body: JSON.stringify(jsonResponse),
-        };
+        const jsonResponse = JSON.parse(chatCompletion.choices[0].message.content);
+        
+        res.status(200).json(jsonResponse);
 
     } catch (error) {
-        console.error(error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: "Errore durante la generazione della parola." }),
-        };
+        console.error("ERRORE DETTAGLIATO DALLA FUNZIONE (OpenAI):", error);
+        res.status(500).json({ error: "Errore durante la generazione della parola con OpenAI.", details: error.message });
     }
 };
