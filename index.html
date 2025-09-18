@@ -49,7 +49,6 @@
 
         let score, consecutiveStreak, currentQuestionIndex, correctAnswers, totalAnswers;
         let gameWords = [];
-        let currentDifficulty = 2; // Partiamo da difficoltà media (1=facile, 2=medio, 3=difficile)
         const TOTAL_QUESTIONS = 10;
         
         async function initGame() {
@@ -64,16 +63,15 @@
             endScreen.classList.remove('active');
             gameScreen.classList.add('active');
             
-            wordDisplay.textContent = `Preparo la tua partita (Liv. ${currentDifficulty})...`;
+            wordDisplay.textContent = 'Carico le domande dalla biblioteca...';
             categoryBadge.textContent = '';
             optionsGrid.innerHTML = '';
             
             try {
+                // L'unica chiamata al server, all'indirizzo corretto /api/getGame
                 const response = await fetch('/api/getGame', {
                     method: 'POST',
-                    cache: 'no-store',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ difficulty: currentDifficulty }) // Inviamo la difficoltà attuale
+                    cache: 'no-store'
                 });
                 if (!response.ok) {
                     const errorData = await response.json();
@@ -81,6 +79,10 @@
                 }
                 gameWords = await response.json();
                 
+                if (gameWords.length < TOTAL_QUESTIONS) {
+                    throw new Error('Non ci sono abbastanza domande nella biblioteca per iniziare una partita.');
+                }
+
                 updateHUD();
                 displayQuestion();
             } catch (error) {
@@ -98,13 +100,6 @@
             
             const wordData = gameWords[currentQuestionIndex];
             
-            // Correzione Bug: controlliamo che i dati esistano prima di usarli
-            if (!wordData || !wordData.word || !wordData.category || !wordData.correct || !wordData.distractors) {
-                console.error("Dati della domanda non validi:", wordData);
-                wordDisplay.textContent = "Errore nel caricare la domanda.";
-                return;
-            }
-
             wordDisplay.textContent = wordData.word;
             categoryBadge.textContent = wordData.category;
             const options = shuffleArray([...wordData.distractors, wordData.correct]);
@@ -156,16 +151,6 @@
             const accuracy = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
             finalScoreDisplay.textContent = score;
             accuracyStat.textContent = `${accuracy}%`;
-            
-            // Logica per adattare la difficoltà
-            if (accuracy >= 70 && currentDifficulty < 3) {
-                currentDifficulty++;
-                console.log("Livello aumentato a:", currentDifficulty);
-            } else if (accuracy <= 40 && currentDifficulty > 1) {
-                currentDifficulty--;
-                console.log("Livello diminuito a:", currentDifficulty);
-            }
-
             gameScreen.classList.remove('active');
             endScreen.classList.add('active');
         }
