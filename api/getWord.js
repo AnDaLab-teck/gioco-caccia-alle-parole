@@ -1,7 +1,9 @@
 const OpenAI = require('openai');
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+// Configuriamo il client per parlare con DeepSeek
+const deepseek = new OpenAI({
+    apiKey: process.env.DEEPSEEK_API_KEY, // Useremo una nuova variabile d'ambiente
+    baseURL: "https://api.deepseek.com" // L'indirizzo speciale di DeepSeek
 });
 
 module.exports = async (req, res) => {
@@ -25,8 +27,9 @@ module.exports = async (req, res) => {
 
         const userPrompt = `Genera una nuova domanda. Parole già usate (da non ripetere): ${usedWords.join(', ')}. Livello di difficoltà richiesto: ${difficultyMap[difficulty]}. Categoria a tua scelta tra: Emozioni, Natura, Sport, Scienza, Cibo, Arte, Geografia.`;
 
-        const chatCompletion = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
+        // Chiamiamo l'API di DeepSeek
+        const chatCompletion = await deepseek.chat.completions.create({
+            model: "deepseek-chat", // Il nome del modello di DeepSeek
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt }
@@ -35,11 +38,11 @@ module.exports = async (req, res) => {
         });
 
         const jsonResponse = JSON.parse(chatCompletion.choices[0].message.content);
-        
+
         res.status(200).json(jsonResponse);
 
     } catch (error) {
-        console.error("ERRORE DETTAGLIATO DALLA FUNZIONE (OpenAI):", error);
-        res.status(500).json({ error: "Errore durante la generazione della parola con OpenAI.", details: error.message });
+        console.error("ERRORE DETTAGLIATO DALLA FUNZIONE (DeepSeek):", error);
+        res.status(500).json({ error: "Errore durante la generazione della parola con DeepSeek.", details: error.message });
     }
 };
