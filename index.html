@@ -68,6 +68,7 @@
             optionsGrid.innerHTML = '';
             
             try {
+                // L'unica chiamata al server, all'indirizzo corretto /api/getGame
                 const response = await fetch('/api/getGame', {
                     method: 'POST',
                     cache: 'no-store',
@@ -96,6 +97,7 @@
             
             const wordData = gameWords[currentQuestionIndex];
             
+            // Il server ci garantisce che le chiavi saranno sempre queste
             wordDisplay.textContent = wordData.word;
             categoryBadge.textContent = wordData.category;
             const options = shuffleArray([...wordData.distractors, wordData.correct]);
@@ -138,7 +140,6 @@
 
         function updateHUD() {
             hudScore.textContent = score;
-            hudStreakValue = document.getElementById('hud-streak-value');
             hudStreakValue.textContent = consecutiveStreak;
             hudQuestionCounter.textContent = `${currentQuestionIndex + 1} / ${TOTAL_QUESTIONS}`;
             progressBar.style.width = `${((currentQuestionIndex + 1) / TOTAL_QUESTIONS) * 100}%`;
