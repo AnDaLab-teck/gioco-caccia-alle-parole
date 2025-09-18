@@ -45,7 +45,6 @@
         const categoryBadge = document.getElementById('category-badge');
         const wordDisplay = document.getElementById('word-display');
         const optionsGrid = document.getElementById('options-grid');
-        const explanationText = document.getElementById('explanation-text');
         const finalScoreDisplay = document.getElementById('final-score');
         const accuracyStat = document.getElementById('accuracy-stat');
 
@@ -67,8 +66,7 @@
             displayQuestion();
         }
 
-        // --- NUOVA FUNZIONE "INSISTENTE" ---
-        async function fetchWord(retryCount = 3) {
+        async function fetchWord() {
             wordDisplay.textContent = 'Sto pensando...';
             categoryBadge.textContent = '';
             optionsGrid.innerHTML = '';
@@ -78,36 +76,18 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ difficulty: 1, usedWords: usedWords })
                 });
-
                 if (!response.ok) {
-                    throw new Error(`Errore dal server: ${response.status}`);
+                    const errorData = await response.json().catch(() => ({ error: "Errore sconosciuto dal server" }));
+                    throw new Error(`Errore HTTP ${response.status}: ${errorData.error || response.statusText}`);
                 }
-
                 const data = await response.json();
-                
-                // Controllo di validità dei dati ricevuti
-                const correctAnswer = data.corretta || data.definizione;
-                const distractors = data.distrattori || data.distractors;
-                const word = data.parola || data.word;
-
-                if (!word || !correctAnswer || !distractors || !Array.isArray(distractors) || distractors.length < 3) {
-                    throw new Error("Dati ricevuti dall'IA incompleti o malformati.");
-                }
-
-                usedWords.push(word);
+                usedWords.push(data.word); // Il server ci garantisce che la chiave sarà "word"
                 return data;
-
             } catch (error) {
-                console.error(`Tentativo fallito (rimasti ${retryCount - 1}): ${error.message}`);
-                if (retryCount > 1) {
-                    await new Promise(res => setTimeout(res, 500)); // Piccola pausa prima di riprovare
-                    return fetchWord(retryCount - 1); // Chiamata ricorsiva per riprovare
-                } else {
-                    console.error('Errore finale dopo tutti i tentativi:', error);
-                    wordDisplay.textContent = `L'IA non sta collaborando...`;
-                    alert(`Si è verificato un errore persistente. Prova a ricaricare la pagina per iniziare una nuova partita.`);
-                    return null;
-                }
+                console.error('Errore nel fetchWord:', error);
+                wordDisplay.textContent = `Errore di comunicazione con il server.`;
+                alert(`Si è verificato un errore: ${error.message}`);
+                return null;
             }
         }
 
@@ -120,25 +100,18 @@
             
             if (!wordData) return;
 
-            const word = wordData.parola || wordData.word;
-            const category = wordData.categoria || wordData.category;
-            const correctAnswer = wordData.corretta || wordData.definizione;
-            const distractors = wordData.distrattori || wordData.distractors;
-
-            wordDisplay.textContent = word;
-            categoryBadge.textContent = category;
-
-            const options = shuffleArray([...distractors, correctAnswer]);
+            wordDisplay.textContent = wordData.word;
+            categoryBadge.textContent = wordData.category;
+            const options = shuffleArray([...wordData.distractors, wordData.correct]);
             
             optionsGrid.innerHTML = '';
             options.forEach(optionText => {
                 const button = document.createElement('button');
                 button.className = 'option-btn';
                 button.textContent = optionText;
-                button.addEventListener('click', () => handleOptionClick(button, optionText, correctAnswer));
+                button.addEventListener('click', () => handleOptionClick(button, optionText, wordData.correct));
                 optionsGrid.appendChild(button);
             });
-            explanationText.style.opacity = '0';
         }
 
         function handleOptionClick(button, selectedAnswer, correctAnswer) {
