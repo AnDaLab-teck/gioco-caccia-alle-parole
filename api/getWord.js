@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 module.exports = async (req, res) => {
-    // Intestazioni anti-cache
+    // Intestazioni anti-cache per garantire risposte sempre nuove
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
@@ -9,7 +9,7 @@ module.exports = async (req, res) => {
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-        // 1. Definiamo lo "stampo" (la funzione e il suo schema)
+        // 1. Definiamo lo "stampo" (la funzione e il suo schema) che l'IA dovrà riempire
         const tools = [{
             functionDeclarations: [{
                 name: "crea_quiz_parole",
@@ -64,7 +64,7 @@ module.exports = async (req, res) => {
             throw new Error("L'IA ha generato parole duplicate all'interno della partita.");
         }
 
-        // 4. Inviamo i dati, ora garantiti per essere perfetti
+        // 4. Inviamo i dati, ora garantiti per essere perfetti e standardizzati
         return res.status(200).json(gameData);
 
     } catch (error) {
