@@ -19,8 +19,7 @@ const validateAndNormalizeData = (data) => {
     };
 };
 
-// --- NUOVA FUNZIONE "CORRETTORE" ---
-// Estrae il JSON da una stringa di testo, anche se l'IA aggiunge frasi prima o dopo.
+// Estrae il JSON da una stringa di testo
 const extractJsonFromString = (text) => {
     const jsonStart = text.indexOf('{');
     const jsonEnd = text.lastIndexOf('}');
@@ -41,7 +40,6 @@ module.exports = async (req, res) => {
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
             const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
-            // --- PROMPT FINALE, PIÙ RIGIDO ---
             const prompt = `
                 ATTENZIONE: La tua unica funzione è generare un oggetto JSON.
                 La tua risposta DEVE iniziare con '{' e finire con '}'.
@@ -55,14 +53,14 @@ module.exports = async (req, res) => {
             const result = await model.generateContent(prompt);
             const response = await result.response;
             const rawText = response.text();
-
-            // Usiamo il nostro "correttore" per pulire la risposta dell'IA
-            const cleanedText = extractJsonFromString(rawText);
             
+            const cleanedText = extractJsonFromString(rawText);
             const jsonData = JSON.parse(cleanedText);
-
-            // Eseguiamo il nostro "Controllo Qualità"
             const normalizedData = validateAndNormalizeData(jsonData);
+
+            // --- NUOVA ISTRUZIONE ANTI-CACHE ---
+            res.setHeader('Cache-Control', 'no-store');
+            // ------------------------------------
 
             return res.status(200).json(normalizedData);
 
@@ -71,7 +69,7 @@ module.exports = async (req, res) => {
             if (attempt === maxRetries) {
                 return res.status(500).json({ error: "L'IA non ha fornito una risposta valida dopo vari tentativi.", details: error.message });
             }
-            await new Promise(res => setTimeout(res, 500)); // Pausa prima di riprovare
+            await new Promise(res => setTimeout(res, 500));
         }
     }
 };
