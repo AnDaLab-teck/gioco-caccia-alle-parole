@@ -22,13 +22,11 @@ const extractJsonFromString = (text) => {
 };
 
 module.exports = async (req, res) => {
-    // --- NUOVI HEADER ANTI-CACHE PIÙ POTENTI ---
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
-    // ---------------------------------------------
 
-    const maxRetries = 3;
+    const maxRetries = 5; // Aumentiamo i tentativi per sicurezza
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             const { usedWords } = req.body;
@@ -51,12 +49,19 @@ module.exports = async (req, res) => {
             const jsonData = JSON.parse(cleanedText);
             const normalizedData = validateAndNormalizeData(jsonData);
 
+            // --- CONTROLLO FINALE "GUARDIA DEL CORPO" ---
+            if (usedWords.includes(normalizedData.word)) {
+                // Se l'IA ha ignorato le istruzioni, lanciamo un errore per forzare un nuovo tentativo.
+                throw new Error(`L'IA ha ripetuto una parola già usata: ${normalizedData.word}`);
+            }
+            // ---------------------------------------------
+
             return res.status(200).json(normalizedData);
 
         } catch (error) {
             console.error(`Tentativo ${attempt} fallito: ${error.message}`);
             if (attempt === maxRetries) {
-                return res.status(500).json({ error: "L'IA non ha fornito una risposta valida dopo vari tentativi.", details: error.message });
+                return res.status(500).json({ error: "L'IA non ha fornito una risposta valida e unica dopo vari tentativi.", details: error.message });
             }
             await new Promise(res => setTimeout(res, 500));
         }
