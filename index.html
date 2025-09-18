@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Caccia alle Parole</title>
+    <title>Caccia alle Parole 🦊</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,23 +11,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root{--color-primary:#4ecdc4;--color-secondary:#45b7d1;--color-accent:#ff6b6b;--color-success:#96ceb4;--color-text:#333;--color-light:#fff;--font-family:'Fredoka',sans-serif}
-        
-        /* --- FIX PER ADATTABILITÀ MOBILE --- */
-        html, body {
-            width: 100%;
-            overflow-x: hidden;
-        }
-        /* ------------------------------------ */
-
+        html, body { width: 100%; overflow-x: hidden; }
         *{margin:0;padding:0;box-sizing:border-box}body{font-family:var(--font-family);color:var(--color-text);display:flex;justify-content:center;align-items:center;min-height:100vh;background:linear-gradient(135deg,#f5f7fa,#c3cfe2);padding:1rem;position:relative}body::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(45deg,var(--color-primary),var(--color-secondary),var(--color-accent),var(--color-success));background-size:400% 400%;animation:gradientBG 15s ease infinite;z-index:-1}@keyframes gradientBG{0%{background-position:0 50%}50%{background-position:100% 50%}100%{background-position:0 50%}}.game-container{width:100%;max-width:800px;background:rgba(255,255,255,.95);border-radius:24px;padding:2rem;box-shadow:0 10px 30px rgba(0,0,0,.1);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.2);position:relative;overflow:hidden;transform:scale(.95);opacity:0;animation:fadeIn .5s ease-out forwards}@keyframes fadeIn{to{transform:scale(1);opacity:1}}.screen{display:none}.screen.active{display:block}#start-screen h1{font-size:3rem;text-align:center;background:linear-gradient(45deg,var(--color-primary),var(--color-accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1rem}#start-screen p{text-align:center;font-size:1.2rem;margin-bottom:2rem;color:#555}.hud{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding:1rem;background:#f0f4f8;border-radius:12px}.hud-item{text-align:center;flex-grow:1}.hud-label{font-size:.9rem;color:#777;font-weight:500}.hud-value{font-size:1.5rem;font-weight:700;color:var(--color-text)}#hud-streak .hud-value{color:var(--color-accent)}.progress-bar-container{width:100%;height:16px;background-color:#e0e0e0;border-radius:8px;margin-bottom:2rem;overflow:hidden}.progress-bar{width:0%;height:100%;background:linear-gradient(90deg,var(--color-primary),var(--color-secondary));border-radius:8px;transition:width .5s ease-out}#question-area{text-align:center;margin-bottom:2rem;min-height:120px}.category-badge{display:inline-block;background-color:var(--color-primary);color:var(--color-light);padding:.3rem .8rem;border-radius:20px;font-size:.9rem;margin-bottom:1rem;font-weight:500}.word-display{font-size:2.8rem;font-weight:700;animation:popIn .5s cubic-bezier(.175,.885,.32,1.275)}@keyframes popIn{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}#options-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
-        
-        /* --- FIX PER ADATTABILITÀ MOBILE --- */
-        .option-btn {
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-        /* ------------------------------------ */
-
+        .option-btn { word-wrap: break-word; overflow-wrap: break-word; }
         .option-btn{width:100%;padding:1.2rem;font-size:1.1rem;font-family:var(--font-family);background-color:var(--color-light);border:2px solid #ddd;border-radius:12px;cursor:pointer;transition:all .2s ease;text-align:left}.option-btn:hover:not(:disabled){transform:translateY(-5px);box-shadow:0 4px 15px rgba(0,0,0,.1);border-color:var(--color-primary)}.option-btn:disabled{cursor:not-allowed}.option-btn.correct{background-color:var(--color-success);color:var(--color-light);border-color:var(--color-success);animation:correctAns .5s ease}.option-btn.incorrect{background-color:var(--color-accent);color:var(--color-light);border-color:var(--color-accent);animation:incorrectAns .5s ease}@keyframes correctAns{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}@keyframes incorrectAns{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-10px)}80%{transform:translateX(10px)}}#end-screen{text-align:center}#end-screen h2{font-size:2.5rem;margin-bottom:1rem}#final-score{font-size:4rem;font-weight:700;color:var(--color-primary);margin-bottom:2rem}#final-stats{display:flex;justify-content:center;gap:2rem;margin-bottom:2.5rem}.btn{padding:1rem 2rem;font-size:1.2rem;font-weight:600;font-family:var(--font-family);border:none;border-radius:12px;cursor:pointer;transition:all .3s ease;background-color:var(--color-primary);color:#fff;box-shadow:0 4px 10px rgba(78,205,196,.4); margin-top: 0.5rem;}.btn:hover{transform:translateY(-3px);box-shadow:0 6px 15px rgba(78,205,196,.6)}#feedback-area{min-height:40px;margin-top:1.5rem;font-weight:500;text-align:center}#explanation-text{color:#333;font-size:1.1rem;opacity:0;transition:opacity .3s}@media (max-width:768px){.game-container{padding:1.5rem}#options-grid{grid-template-columns:1fr}.word-display{font-size:2.2rem}.hud{flex-direction:column;gap:.5rem;padding:.5rem}}
     </style>
 </head>
@@ -54,14 +40,12 @@
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         const { jsPDF } = window.jspdf;
-
         const startScreen = document.getElementById('start-screen');
         const gameScreen = document.getElementById('game-screen');
         const endScreen = document.getElementById('end-screen');
         const startBtn = document.getElementById('start-btn');
         const restartBtn = document.getElementById('restart-btn');
         const downloadPdfBtn = document.getElementById('download-pdf-btn');
-        
         const hudScore = document.getElementById('hud-score');
         const hudQuestionCounter = document.getElementById('hud-question-counter');
         const hudStreakValue = document.getElementById('hud-streak-value');
@@ -108,11 +92,9 @@
                     throw new Error(errorData.error || 'Errore del server');
                 }
                 gameWords = await response.json();
-                
                 if (gameWords.length < 1) {
                     throw new Error('Non ci sono abbastanza domande nel vocabolario per questo livello.');
                 }
-
                 updateHUD();
                 displayQuestion();
             } catch (error) {
@@ -127,20 +109,16 @@
                 endGame();
                 return;
             }
-            
             const wordData = gameWords[currentQuestionIndex];
-            
             if (!wordData || !wordData.word || !wordData.category || !wordData.correct || !wordData.distractors) {
                 console.error("Dati della domanda non validi:", wordData);
                 wordDisplay.textContent = "Errore nel caricare la domanda.";
                 optionsGrid.innerHTML = '';
                 return;
             }
-
             wordDisplay.textContent = wordData.word;
             categoryBadge.textContent = wordData.category;
             const options = shuffleArray([...wordData.distractors, wordData.correct]);
-            
             optionsGrid.innerHTML = '';
             options.forEach(optionText => {
                 const button = document.createElement('button');
@@ -155,14 +133,12 @@
             Array.from(optionsGrid.children).forEach(btn => btn.disabled = true);
             totalAnswers++;
             const isCorrect = selectedAnswer === wordData.correct;
-
             gameResults.push({
                 word: wordData.word,
                 selectedAnswer: selectedAnswer,
                 correctAnswer: wordData.correct,
                 isCorrect: isCorrect
             });
-
             if (isCorrect) {
                 correctAnswers++;
                 consecutiveStreak++;
@@ -175,9 +151,7 @@
                     if (btn.textContent === wordData.correct) btn.classList.add('correct');
                 });
             }
-            
             updateHUD();
-
             setTimeout(() => {
                 currentQuestionIndex++;
                 displayQuestion();
@@ -196,18 +170,15 @@
             const accuracy = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
             finalScoreDisplay.textContent = score;
             accuracyStat.textContent = `${accuracy}%`;
-            
             if (accuracy >= 70 && currentDifficulty < 3) {
                 currentDifficulty++;
             } else if (accuracy <= 40 && currentDifficulty > 1) {
                 currentDifficulty--;
             }
-
             gameScreen.classList.remove('active');
             endScreen.classList.add('active');
         }
 
-        // --- FUNZIONE PDF CON GRAFICA E TITOLO CORRETTI ---
         function generatePDF() {
             const doc = new jsPDF();
             let y = 0;
@@ -227,7 +198,8 @@
                 doc.text("Report Partita", 105, 15, { align: 'center' });
                 doc.setFontSize(14);
                 doc.setFont('helvetica', 'normal');
-                doc.text("Caccia alle Parole 🦊", 105, 23, { align: 'center' });
+                // --- FIX: Rimuoviamo l'emoji per garantire la corretta visualizzazione ---
+                doc.text("Caccia alle Parole", 105, 23, { align: 'center' });
                 y = 45;
 
                 if (isFirstPage) {
@@ -243,46 +215,37 @@
             };
 
             drawHeader(true);
-
             doc.setFontSize(11);
             gameResults.forEach((result, index) => {
                 if (y > pageHeight - 30) {
                     doc.addPage();
                     drawHeader(false);
                 }
-
                 doc.setFont('helvetica', 'bold');
                 doc.setTextColor(colorText);
                 doc.text(`${index + 1}. Parola: ${result.word}`, 15, y);
                 y += 7;
-
                 doc.setFont('helvetica', 'normal');
-                // Usa splitTextToSize per andare a capo automaticamente con il testo lungo
                 const answerLines = doc.splitTextToSize(`- La tua risposta: "${result.selectedAnswer}"`, 175);
-                
                 if (result.isCorrect) {
-                    doc.setTextColor(46, 139, 87); // Verde più scuro
+                    doc.setTextColor(46, 139, 87);
                     doc.text(answerLines, 20, y);
                     y += (answerLines.length * 5);
                     doc.text("(Corretta)", 20, y);
-
                 } else {
-                    doc.setTextColor(178, 34, 34); // Rosso più scuro
+                    doc.setTextColor(178, 34, 34);
                     doc.text(answerLines, 20, y);
                     y += (answerLines.length * 5);
                     doc.text("(Sbagliata)", 20, y);
                     y += 6;
-
                     doc.setTextColor(46, 139, 87);
                     const correctLines = doc.splitTextToSize(`- Risposta corretta: "${result.correctAnswer}"`, 175);
                     doc.text(correctLines, 20, y);
                     y += (correctLines.length * 5);
                 }
-                
                 doc.setTextColor(colorText);
                 y += 12;
             });
-            
             doc.save(`Report-Caccia-alle-Parole.pdf`);
         }
 
