@@ -8,17 +8,28 @@ const validateAndNormalizeData = (data) => {
     const distractors = data.distrattori || data.distractors;
 
     if (!word || !category || !correctAnswer || !distractors || !Array.isArray(distractors) || distractors.length < 3) {
-        // Se i dati non sono validi, lancia un errore che verrà catturato dal ciclo di tentativi
-        throw new Error("Dati dall'IA incompleti o malformati.");
+        throw new Error("Dati JSON incompleti.");
     }
     
-    // Ritorna un oggetto normalizzato e garantito, che il gioco potrà usare senza problemi
     return {
         word: word,
         category: category,
         correct: correctAnswer,
         distractors: distractors
     };
+};
+
+// --- NUOVA FUNZIONE "CORRETTORE" ---
+// Estrae il JSON da una stringa di testo, anche se l'IA aggiunge frasi prima o dopo.
+const extractJsonFromString = (text) => {
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}');
+    
+    if (jsonStart === -1 || jsonEnd === -1 || jsonEnd < jsonStart) {
+        throw new Error("Nessun JSON valido trovato nella risposta dell'IA.");
+    }
+    
+    return text.substring(jsonStart, jsonEnd + 1);
 };
 
 
@@ -30,32 +41,37 @@ module.exports = async (req, res) => {
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
             const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
+            // --- PROMPT FINALE, PIÙ RIGIDO ---
             const prompt = `
-                Sei un esperto di vocabolario italiano. Il tuo compito è generare UNA SOLA domanda per un quiz.
-                La risposta DEVE essere un JSON valido. Non includere MAI markdown (\`\`\`json) o altro testo.
-                Il JSON deve avere queste chiavi: "parola", "categoria", "corretta" (la definizione), e "distrattori" (un array di 3 stringhe).
+                ATTENZIONE: La tua unica funzione è generare un oggetto JSON.
+                La tua risposta DEVE iniziare con '{' e finire con '}'.
+                NON includere MAI testo, spiegazioni o markdown (\`\`\`json) prima o dopo l'oggetto JSON.
+                Il JSON deve contenere le chiavi: "parola", "categoria", "corretta" (la definizione), e "distrattori" (un array di 3 stringhe).
+                Esempio di risposta valida: {"parola": "Felicità", "categoria": "Emozioni", "corretta": "Stato di contentezza", "distrattori": ["Tristezza", "Rabbia", "Paura"]}
                 Parole da non usare: ${usedWords.join(', ')}.
                 Livello: Base.
             `;
 
             const result = await model.generateContent(prompt);
             const response = await result.response;
-            const text = response.text();
-            
-            const jsonData = JSON.parse(text);
+            const rawText = response.text();
 
-            // Eseguiamo il nostro nuovo "Controllo Qualità"
+            // Usiamo il nostro "correttore" per pulire la risposta dell'IA
+            const cleanedText = extractJsonFromString(rawText);
+            
+            const jsonData = JSON.parse(cleanedText);
+
+            // Eseguiamo il nostro "Controllo Qualità"
             const normalizedData = validateAndNormalizeData(jsonData);
 
-            // Se arriviamo qui, i dati sono perfetti. Li inviamo e usciamo dal ciclo.
             return res.status(200).json(normalizedData);
 
         } catch (error) {
             console.error(`Tentativo ${attempt} fallito: ${error.message}`);
             if (attempt === maxRetries) {
-                // Se tutti i tentativi falliscono, inviamo un errore finale.
                 return res.status(500).json({ error: "L'IA non ha fornito una risposta valida dopo vari tentativi.", details: error.message });
             }
+            await new Promise(res => setTimeout(res, 500)); // Pausa prima di riprovare
         }
     }
 };
