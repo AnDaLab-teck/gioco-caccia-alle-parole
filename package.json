@@ -1,5 +1,5 @@
 {
-  "name": "caccia-alle-parole-google",
+  "name": "caccia-alle-parole-google-final",
   "version": "1.0.0",
   "dependencies": {
     "@google/generative-ai": "^0.15.0"
