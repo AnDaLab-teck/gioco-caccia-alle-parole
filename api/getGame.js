@@ -1,70 +1,32 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+// File: api/getGame.js
+const { createClient } = require('@supabase/supabase-js');
 
-// Funzione di validazione finale, assicura che ogni domanda sia completa
-const validateQuestions = (questions) => {
-    if (!Array.isArray(questions) || questions.length < 10) return false;
-    
-    return questions.every(q => 
-        q.word && q.category && q.correct && 
-        Array.isArray(q.distractors) && q.distractors.length >= 3
-    );
-};
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 module.exports = async (req, res) => {
-    // Intestazioni anti-cache
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
+    res.setHeader('Cache-Control', 'no-store'); // Previene la cache
 
     try {
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-        // 1. Usiamo il modello gemini-1.0-pro e attiviamo la modalità JSON
-        const model = genAI.getGenerativeModel({
-            model: "gemini-1.0-pro",
-            generationConfig: {
-                responseMimeType: "application/json",
-            },
-        });
-
-        // 2. Definiamo lo schema JSON direttamente nel prompt, un'istruzione che questo modello gestisce meglio
-        const prompt = `
-            Genera una partita completa per il gioco 'Caccia alle Parole'.
-            La tua risposta DEVE essere un oggetto JSON che rispetta questo schema:
-            {
-                "domande": [
-                    {
-                        "word": "stringa",
-                        "category": "stringa",
-                        "correct": "stringa",
-                        "distractors": ["stringa", "stringa", "stringa"]
-                    }
-                ]
-            }
-            Crea esattamente 10 oggetti unici all'interno dell'array "domande".
-            Le parole e le definizioni devono essere semplici e adatte a ragazzi con un'età mentale di 10-12 anni.
-        `;
+        // Chiamiamo la funzione SQL che abbiamo creato in Supabase per pescare 10 domande a caso
+        const { data, error } = await supabase.rpc('get_random_questions', { limit_count: 10 });
         
-        const result = await model.generateContent(prompt);
-        const response = result.response;
-        const gameData = JSON.parse(response.text());
+        if (error) throw error;
 
-        // 3. Eseguiamo un ultimo controllo di qualità
-        const questions = gameData.domande;
-        if (!validateQuestions(questions)) {
-            throw new Error("L'IA ha generato dati incompleti o non validi.");
-        }
+        // Il server si assicura che il formato sia perfetto per il gioco
+        const gameData = data.map(q => ({
+            word: q.word,
+            category: q.category,
+            correct: q.correct,
+            distractors: q.distractors
+        }));
 
-        const wordSet = new Set(questions.map(q => q.word));
-        if (wordSet.size < 10) {
-            throw new Error("L'IA ha generato parole duplicate.");
-        }
-        
-        // 4. Dato che il server ora garantisce le chiavi corrette, inviamo direttamente l'array di domande
-        return res.status(200).json(questions);
+        return res.status(200).json(gameData);
 
     } catch (error) {
-        console.error("Errore critico nella generazione della partita:", error);
-        return res.status(500).json({ error: "Si è verificato un errore interno nel generare la partita.", details: error.message });
+        console.error("Errore nel recuperare le domande da Supabase:", error);
+        return res.status(500).json({ error: "Impossibile caricare le domande dalla nostra biblioteca." });
     }
 };
