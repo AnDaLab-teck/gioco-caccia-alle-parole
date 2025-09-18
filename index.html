@@ -82,8 +82,8 @@
                     throw new Error(`Errore HTTP ${response.status}: ${errorData.error || response.statusText}`);
                 }
                 const data = await response.json();
-                // Ora usiamo la chiave corretta in italiano
-                usedWords.push(data.parola);
+                const word = data.parola || data.word; // Aggiunta flessibilità
+                usedWords.push(word);
                 return data;
             } catch (error) {
                 console.error('Errore nel fetchWord:', error);
@@ -102,19 +102,30 @@
             
             if (!wordData) return;
 
-            // --- QUESTA È LA PARTE CORRETTA ---
-            wordDisplay.textContent = wordData.parola;
-            categoryBadge.textContent = wordData.categoria;
-            const options = shuffleArray([...wordData.distrattori, wordData.corretta]);
-            // ------------------------------------
+            // --- QUESTA È LA PARTE CORRETTA E FLESSIBILE ---
+            const word = wordData.parola || wordData.word;
+            const category = wordData.categoria || wordData.category;
+            const correctAnswer = wordData.corretta || wordData.definizione;
+            const distractors = wordData.distrattori || wordData.distractors;
+            // ------------------------------------------------
 
+            wordDisplay.textContent = word;
+            categoryBadge.textContent = category;
+            
+            if (!distractors || !correctAnswer) {
+                console.error("Dati ricevuti non validi:", wordData);
+                wordDisplay.textContent = "Errore: Dati ricevuti non validi.";
+                return;
+            }
+
+            const options = shuffleArray([...distractors, correctAnswer]);
+            
             optionsGrid.innerHTML = '';
             options.forEach(optionText => {
                 const button = document.createElement('button');
                 button.className = 'option-btn';
                 button.textContent = optionText;
-                // Usiamo la chiave corretta in italiano qui
-                button.addEventListener('click', () => handleOptionClick(button, optionText, wordData.corretta));
+                button.addEventListener('click', () => handleOptionClick(button, optionText, correctAnswer));
                 optionsGrid.appendChild(button);
             });
             explanationText.style.opacity = '0';
